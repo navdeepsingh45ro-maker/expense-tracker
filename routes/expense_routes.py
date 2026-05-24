@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from schemas.expense_schema import ExpenseCreate
 from models.expense_model import Expense
 from models.user_model import User
-
+from models.budget_model import Budget
 from auth.auth2 import get_current_user
 from database import get_db
 
@@ -44,3 +43,34 @@ def update_expense(expense_id: int, expense_data: ExpenseCreate, current_user: U
     db.commit()
     db.refresh(expense)
     return expense
+
+@router.get("/analytics")
+def get_analytics(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    expenses = db.query(Expense).filter(Expense.user_id == current_user.id).all()
+    budget = db.query(Budget).filter(Budget.user_id == current_user.id).first()
+    if not budget:
+       raise HTTPException(status_code=404, detail="Budget not found")
+    total_spent = sum(expense.amount for expense in expenses)
+    remaining_budget = budget.monthly_budget - total_spent
+    
+    top_category = max(expenses_by_category, key=expenses_by_category.get)
+    if expenses_by_category[top_category] == 0:
+        top_category = None
+    expense_count = len(expenses)
+    percentage_spent = ((total_spent / budget.monthly_budget) * 100
+    if budget.monthly_budget > 0 else 0)
+
+    expense_by_category = {}
+    for expense in expenses:
+        if expense.category in expense_by_category:
+            expense_by_category[expense.category] += expense.amount
+        else:
+            expense_by_category[expense.category] = expense.amount
+    return {
+        "total_spent": total_spent,
+        "remaining_budget": remaining_budget,
+        "category_breakdown": category_breakdown,
+        "top_category": top_category,
+        "expense_count": expense_count,
+        "percentage_spent": percentage_spent
+    }
