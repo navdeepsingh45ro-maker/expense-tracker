@@ -9,6 +9,7 @@ from auth.hashing import verify_password
 from auth.jwt_handler import create_access_token
 from sqlalchemy.orm import Session
 from database import get_db
+from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter()
 @router.post("/users/")
@@ -26,9 +27,9 @@ def create_user(user: UserCreate):
     return {"message": "User created successfully"}
 
 @router.post("/login")
-def login(request: LoginSchema, db: Session = Depends(get_db)):
+def login(request: OAuth2PasswordRequestForm = Depends(),db: Session = Depends(get_db)):
 
-    user = db.query(User).filter(User.email == request.email).first()
+    user = db.query(User).filter(User.email == request.username).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

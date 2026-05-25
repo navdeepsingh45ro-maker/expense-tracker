@@ -53,24 +53,25 @@ def get_analytics(current_user: User = Depends(get_current_user), db: Session = 
     total_spent = sum(expense.amount for expense in expenses)
     remaining_budget = budget.monthly_budget - total_spent
     
-    top_category = max(expenses_by_category, key=expenses_by_category.get)
-    if expenses_by_category[top_category] == 0:
-        top_category = None
+    
+
+    expenses_by_category = {}
+    for expense in expenses:
+        if expense.category in expenses_by_category:
+            expenses_by_category[expense.category] += expense.amount
+        else:
+            expenses_by_category[expense.category] = expense.amount
+
+    top_category = (max(expenses_by_category, key=expenses_by_category.get)
+        if expenses_by_category else None)
     expense_count = len(expenses)
     percentage_spent = ((total_spent / budget.monthly_budget) * 100
-    if budget.monthly_budget > 0 else 0)
-
-    expense_by_category = {}
-    for expense in expenses:
-        if expense.category in expense_by_category:
-            expense_by_category[expense.category] += expense.amount
-        else:
-            expense_by_category[expense.category] = expense.amount
+    if budget.monthly_budget > 0 else 0)        
     return {
         "total_spent": total_spent,
         "remaining_budget": remaining_budget,
-        "category_breakdown": category_breakdown,
+        "category_breakdown": expenses_by_category,
         "top_category": top_category,
         "expense_count": expense_count,
-        "percentage_spent": percentage_spent
+        "percentage_spent": round(percentage_spent, 2)
     }
